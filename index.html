@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supply Chain Performance Dashboard — DataCo Global</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #090d16;
+  background-image: radial-gradient(at 0% 0%, rgba(17, 24, 39, 0.8) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(13, 20, 35, 0.9) 0, transparent 50%), radial-gradient(at 100% 0%, rgba(15, 23, 42, 0.8) 0, transparent 50%);
+  color: #e2e8f2;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.shell { display: flex; min-height: 100vh; }
+
+/* Mobile Header */
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: #0b111c;
+  border-bottom: 1px solid #1e2d42;
+  padding: 0 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 56px;
+  z-index: 20;
+}
+.menu-toggle {
+  background: none;
+  border: none;
+  color: #e2e8f2;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.mobile-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f2;
+}
+
+/* Mobile Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 12;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.sidebar-overlay.open {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #0b111c;
+  border-right: 1px solid #1e2d42;
+  padding: 20px 0;
+  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 10;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.logo { padding: 0 20px 20px; border-bottom: 1px solid #1e2d42; margin-bottom: 12px; }
+.logo-title { font-size: 13px; font-weight: 600; color: #e2e8f2; line-height: 1.3; }
+.logo-sub { font-size: 11px; color: #5a7090; margin-top: 2px; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: #7a90a8;
+  border-left: 3px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 4px 4px 0;
+  margin-right: 8px;
+}
+.nav-item:hover { background: rgba(91, 163, 245, 0.05); color: #e2e8f2; }
+.nav-item.active { background: rgba(91, 163, 245, 0.1); color: #5ba3f5; border-left-color: #5ba3f5; font-weight: 500; }
+.nav-icon { font-size: 15px; opacity: 0.8; }
+.nav-section { font-size: 10px; color: #3a5060; text-transform: uppercase; letter-spacing: 0.1em; padding: 16px 20px 6px; font-weight: 600; }
+
+/* Main */
+.main { margin-left: 220px; padding: 24px 28px; flex: 1; min-width: 0; }
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.4s ease; }
+.page-header { margin-bottom: 20px; }
+.page-title { font-size: 20px; font-weight: 600; color: #e2e8f2; margin-bottom: 3px; }
+.page-desc { font-size: 12.5px; color: #5a7090; }
+.badge { display: inline-block; background: #1a2d45; color: #5ba3f5; font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-left: 8px; font-weight: 500; }
+
+/* KPI Cards */
+.kpi-grid { display: grid; gap: 12px; margin-bottom: 18px; }
+.g6 { grid-template-columns: repeat(6, 1fr); }
+.g5 { grid-template-columns: repeat(5, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.kpi-card {
+  background: rgba(19, 30, 46, 0.65);
+  border: 1px solid rgba(30, 45, 66, 0.7);
+  backdrop-filter: blur(12px);
+  border-radius: 8px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(91, 163, 245, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--accent, #5ba3f5); }
+.kpi-label { font-size: 11px; color: #5a7090; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.kpi-value { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; color: var(--accent, #5ba3f5); }
+.kpi-note { font-size: 10.5px; color: #3a5060; margin-top: 4px; }
+.acc-blue { --accent: #5ba3f5; }
+.acc-green { --accent: #4fd1a5; }
+.acc-amber { --accent: #f5a623; }
+.acc-red { --accent: #f06060; }
+.acc-purple { --accent: #a78bfa; }
+
+/* Chart panels */
+.chart-grid { display: grid; gap: 14px; margin-bottom: 14px; }
+.cg2 { grid-template-columns: 1fr 1fr; }
+.cg3 { grid-template-columns: 1fr 1fr 1fr; }
+.cg12 { grid-template-columns: 1.3fr 1fr; }
+.chart-panel {
+  background: rgba(19, 30, 46, 0.65);
+  border: 1px solid rgba(30, 45, 66, 0.7);
+  backdrop-filter: blur(12px);
+  border-radius: 8px;
+  padding: 16px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.chart-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(91, 163, 245, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.chart-panel.full { grid-column: 1/-1; }
+.chart-panel-title { font-size: 13px; font-weight: 500; color: #c8d8e8; margin-bottom: 2px; }
+.chart-panel-sub { font-size: 11px; color: #4a6070; margin-bottom: 12px; }
+.chart-wrap { position: relative; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 11px; color: #5a7090; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* Divider */
+.section-sep { height: 1px; background: #1e2d42; margin: 20px 0; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1024px) {
+  .mobile-header { display: flex; }
+  .sidebar-overlay { display: block; }
+  .sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 15;
+    background: #0b111c;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; padding: 76px 20px 24px; }
+  .g6 { grid-template-columns: repeat(3, 1fr); }
+  .g5 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .g6 { grid-template-columns: repeat(2, 1fr); }
+  .g5 { grid-template-columns: repeat(2, 1fr); }
+  .cg2, .cg3, .cg12 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .g6, .g5, .g4 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<!-- Mobile Header -->
+<div class="mobile-header">
+  <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button>
+  <div class="mobile-title">Supply Chain Performance</div>
+  <div style="width: 24px;"></div>
+</div>
+
+<!-- Backdrop Overlay for Mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="shell">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Supply Chain<br>Performance</div>
+    <div class="logo-sub">DataCo Global · 2015–2018</div>
+  </div>
+  <div class="nav-section">Dashboard</div>
+  <div class="nav-item active" onclick="showPage(0)">
+    <span class="nav-icon">◈</span> Executive overview
+  </div>
+  <div class="nav-section">Analysis</div>
+  <div class="nav-item" onclick="showPage(1)">
+    <span class="nav-icon">◆</span> Sales performance
+  </div>
+  <div class="nav-item" onclick="showPage(2)">
+    <span class="nav-icon">◉</span> Delivery performance
+  </div>
+  <div class="nav-item" onclick="showPage(3)">
+    <span class="nav-icon">◈</span> Profitability analysis
+  </div>
+  <div class="nav-item" onclick="showPage(4)">
+    <span class="nav-icon">◎</span> Order & customer
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+<!-- PAGE 1: Executive Overview -->
+<div class="page active" id="page0">
+  <div class="page-header">
+    <div class="page-title">Executive Overview <span class="badge">180,519 records</span></div>
+    <div class="page-desc">High-level supply chain performance summary — Jan 2015 to Jan 2018 · 5 global markets</div>
+  </div>
+  <div class="kpi-grid g6">
+    <div class="kpi-card acc-blue"><div class="kpi-label">Total Sales</div><div class="kpi-value">$36.78M</div><div class="kpi-note">SUM(Sales)</div></div>
+    <div class="kpi-card acc-green"><div class="kpi-label">Total Profit</div><div class="kpi-value">$3.97M</div><div class="kpi-note">SUM(Order Profit)</div></div>
+    <div class="kpi-card acc-green"><div class="kpi-label">Profit Margin %</div><div class="kpi-value">10.78%</div><div class="kpi-note">Profit ÷ Sales</div></div>
+    <div class="kpi-card acc-blue"><div class="kpi-label">Total Orders</div><div class="kpi-value">65,752</div><div class="kpi-note">DISTINCTCOUNT(Order Id)</div></div>
+    <div class="kpi-card acc-red"><div class="kpi-label">Late Delivery Rate</div><div class="kpi-value">54.83%</div><div class="kpi-note">⚠ Critical issue</div></div>
+    <div class="kpi-card acc-amber"><div class="kpi-label">On-Time Delivery</div><div class="kpi-value">17.84%</div><div class="kpi-note">Shipping on time</div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-panel full">
+      <div class="chart-panel-title">Monthly Sales Trend</div>
+      <div class="chart-panel-sub">SUM(Sales) by order month — Jan 2015 to Jan 2018</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p1_line"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid cg3">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Sales by Market</div>
+      <div class="chart-panel-sub">SUM(Sales) grouped by Market</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="p1_market"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Sales & Profit by Segment</div>
+      <div class="chart-panel-sub">Consumer · Corporate · Home Office</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Sales</div><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>Profit</div></div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p1_seg"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Delivery Status Overview</div>
+      <div class="chart-panel-sub">COUNT(Order Id) by Delivery Status</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#f06060"></div>Late (55%)</div><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Advance (23%)</div><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>On time (18%)</div><div class="legend-item"><div class="legend-dot" style="background:#6b7c8d"></div>Canceled (4%)</div></div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p1_donut"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: Sales Performance -->
+<div class="page" id="page1">
+  <div class="page-header">
+    <div class="page-title">Sales Performance</div>
+    <div class="page-desc">Revenue breakdown by product category, department and geography</div>
+  </div>
+  <div class="kpi-grid g4">
+    <div class="kpi-card acc-blue"><div class="kpi-label">Total Sales</div><div class="kpi-value">$36.78M</div><div class="kpi-note">SUM(Sales)</div></div>
+    <div class="kpi-card acc-purple"><div class="kpi-label">Total Units Sold</div><div class="kpi-value">384,079</div><div class="kpi-note">SUM(Order Item Quantity)</div></div>
+    <div class="kpi-card acc-blue"><div class="kpi-label">Avg Order Value</div><div class="kpi-value">$559.45</div><div class="kpi-note">Sales ÷ Total Orders</div></div>
+    <div class="kpi-card acc-amber"><div class="kpi-label">Avg Discount Rate</div><div class="kpi-value">10.17%</div><div class="kpi-note">AVERAGE(Discount Rate)</div></div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Top 10 Categories by Sales</div>
+      <div class="chart-panel-sub">SUM(Sales) — Top N filter applied</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="p2_cat"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Sales by Department</div>
+      <div class="chart-panel-sub">SUM(Sales) by Department Name</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="p2_dept"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Monthly Sales by Segment</div>
+      <div class="chart-panel-sub">SUM(Sales) by Customer Segment over time</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Consumer</div><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>Corporate</div><div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Home Office</div></div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p2_seg_line"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Top 5 Countries by Sales</div>
+      <div class="chart-panel-sub">SUM(Sales) by Order Country</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p2_country"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: Delivery Performance -->
+<div class="page" id="page2">
+  <div class="page-header">
+    <div class="page-title">Delivery Performance</div>
+    <div class="page-desc">Logistics health — shipping modes, delays and late delivery analysis</div>
+  </div>
+  <div class="kpi-grid g5">
+    <div class="kpi-card acc-red"><div class="kpi-label">Late Delivery Rate</div><div class="kpi-value">54.83%</div><div class="kpi-note">⚠ 98,977 orders late</div></div>
+    <div class="kpi-card acc-amber"><div class="kpi-label">On-Time Delivery</div><div class="kpi-value">17.84%</div><div class="kpi-note">32,196 on time</div></div>
+    <div class="kpi-card acc-amber"><div class="kpi-label">Shipping Delay</div><div class="kpi-value">+0.57 days</div><div class="kpi-note">Actual vs scheduled</div></div>
+    <div class="kpi-card acc-green"><div class="kpi-label">Cancellation Rate</div><div class="kpi-value">2.05%</div><div class="kpi-note">3,692 canceled</div></div>
+    <div class="kpi-card acc-red"><div class="kpi-label">Loss-Making Orders</div><div class="kpi-value">33,784</div><div class="kpi-note">Profit &lt; 0</div></div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Delivery Status Breakdown</div>
+      <div class="chart-panel-sub">COUNT(Order Id) by Delivery Status</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#f06060"></div>Late (98,977)</div><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Advance (41,592)</div><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>On time (32,196)</div><div class="legend-item"><div class="legend-dot" style="background:#6b7c8d"></div>Canceled (7,754)</div></div>
+      <div class="chart-wrap" style="height:210px"><canvas id="p3_donut"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Late Delivery Rate by Market</div>
+      <div class="chart-panel-sub">Late_delivery_risk = 1 rate by Market (%)</div>
+      <div class="chart-wrap" style="height:210px"><canvas id="p3_market"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Avg Shipping Days by Mode</div>
+      <div class="chart-panel-sub">AVERAGE(Days for shipping real) by Shipping Mode</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="p3_mode"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Late Delivery Trend by Month</div>
+      <div class="chart-panel-sub">Late Delivery Rate % over time — 2015 to 2018</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="p3_trend"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: Profitability -->
+<div class="page" id="page3">
+  <div class="page-header">
+    <div class="page-title">Profitability Analysis</div>
+    <div class="page-desc">Profit by department, segment, category and monthly trend</div>
+  </div>
+  <div class="kpi-grid g4">
+    <div class="kpi-card acc-green"><div class="kpi-label">Total Profit</div><div class="kpi-value">$3.97M</div><div class="kpi-note">SUM(Order Profit Per Order)</div></div>
+    <div class="kpi-card acc-green"><div class="kpi-label">Profit Margin %</div><div class="kpi-value">10.78%</div><div class="kpi-note">Profit ÷ Sales × 100</div></div>
+    <div class="kpi-card acc-red"><div class="kpi-label">Loss-Making Orders</div><div class="kpi-value">33,784</div><div class="kpi-note">Order Profit &lt; 0</div></div>
+    <div class="kpi-card acc-amber"><div class="kpi-label">Avg Discount Rate</div><div class="kpi-value">10.17%</div><div class="kpi-note">AVERAGE(Discount Rate %)</div></div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Profit by Department</div>
+      <div class="chart-panel-sub">SUM(Order Profit Per Order) by Department</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="p4_dept"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Profit by Customer Segment</div>
+      <div class="chart-panel-sub">SUM(Order Profit Per Order) by Segment</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="p4_seg"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Monthly Profit Trend</div>
+      <div class="chart-panel-sub">SUM(Order Profit Per Order) by Month</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p4_trend"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Profit by Top 5 Categories</div>
+      <div class="chart-panel-sub">SUM(Profit) — Top 5 Category Names</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p4_cat"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 5: Order & Customer -->
+<div class="page" id="page4">
+  <div class="page-header">
+    <div class="page-title">Order & Customer Analysis</div>
+    <div class="page-desc">Order fulfillment, customer behavior and shipping patterns</div>
+  </div>
+  <div class="kpi-grid g4">
+    <div class="kpi-card acc-blue"><div class="kpi-label">Total Orders</div><div class="kpi-value">65,752</div><div class="kpi-note">DISTINCTCOUNT(Order Id)</div></div>
+    <div class="kpi-card acc-purple"><div class="kpi-label">Total Units Sold</div><div class="kpi-value">384,079</div><div class="kpi-note">SUM(Order Item Quantity)</div></div>
+    <div class="kpi-card acc-blue"><div class="kpi-label">Avg Order Value</div><div class="kpi-value">$559.45</div><div class="kpi-note">Sales ÷ Total Orders</div></div>
+    <div class="kpi-card acc-green"><div class="kpi-label">Cancellation Rate</div><div class="kpi-value">2.05%</div><div class="kpi-note">CANCELED ÷ Total orders</div></div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Order Status Breakdown</div>
+      <div class="chart-panel-sub">COUNT(Order Id) by Order Status</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>Complete (33%)</div><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Pending pay (22%)</div><div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Processing (12%)</div><div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Pending (11%)</div><div class="legend-item"><div class="legend-dot" style="background:#6b7c8d"></div>Other (22%)</div></div>
+      <div class="chart-wrap" style="height:210px"><canvas id="p5_status"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Order Volume by Shipping Mode</div>
+      <div class="chart-panel-sub">COUNT(Order Id) by Shipping Mode</div>
+      <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#5ba3f5"></div>Standard (60%)</div><div class="legend-item"><div class="legend-dot" style="background:#4fd1a5"></div>Second (20%)</div><div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>First (15%)</div><div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Same Day (5%)</div></div>
+      <div class="chart-wrap" style="height:210px"><canvas id="p5_mode"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid cg2">
+    <div class="chart-panel">
+      <div class="chart-panel-title">Monthly Order Volume Trend</div>
+      <div class="chart-panel-sub">COUNT(Order Id) by Month — 2015 to 2018</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p5_trend"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Sales by Customer Segment</div>
+      <div class="chart-panel-sub">SUM(Sales) by Customer Segment</div>
+      <div class="chart-wrap" style="height:170px"><canvas id="p5_seg"></canvas></div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const MONTHS=['Jan-15','Feb-15','Mar-15','Apr-15','May-15','Jun-15','Jul-15','Aug-15','Sep-15','Oct-15','Nov-15','Dec-15','Jan-16','Feb-16','Mar-16','Apr-16','May-16','Jun-16','Jul-16','Aug-16','Sep-16','Oct-16','Nov-16','Dec-16','Jan-17','Feb-17','Mar-17','Apr-17','May-17','Jun-17','Jul-17','Aug-17','Sep-17','Oct-17','Nov-17','Dec-17'];
+const MSALES=[1051590,927010,1051254,1014463,1050478,1024006,1038081,1029495,1018339,1049154,1029120,1057841,1046308,968543,1025853,1001212,1029400,1003060,1045716,1048200,1002397,1048131,1047590,1037408,1029698,992535,1048005,1038322,1105485,1032086,1104373,1109337,1143775,1073994,626914,503911];
+const BLUE='#5ba3f5',GREEN='#4fd1a5',AMBER='#f5a623',RED='#f06060',GRAY='#6b7c8d',PURPLE='#a78bfa',TEAL='#38c9c0';
+const G='rgba(255,255,255,0.06)';
+const TX='#5a7090';
+const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:10}}},y:{grid:{color:G},ticks:{color:TX,font:{size:10}}}}};
+function c(id,type,labels,datasets,extra){
+  const el=document.getElementById(id);if(!el)return;
+  const o=JSON.parse(JSON.stringify(base));
+  if(extra)Object.assign(o,extra);
+  new Chart(el,{type,data:{labels,datasets},options:o});
+}
+function donut(id,labels,data,colors){
+  const el=document.getElementById(id);if(!el)return;
+  new Chart(el,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'60%'}});
+}
+
+function initPage(n){
+  if(n===0){
+    c('p1_line','line',MONTHS,[{data:MSALES.map(v=>+(v/1e6).toFixed(2)),borderColor:BLUE,backgroundColor:'rgba(91,163,245,0.08)',fill:true,tension:0.35,pointRadius:0,borderWidth:2}],{scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},maxTicksLimit:9}},y:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v.toFixed(1)+'M'}}}});
+    c('p1_market','bar',['Europe','LATAM','Pacific Asia','USCA','Africa'],[{data:[10.87,10.28,8.27,5.07,2.29],backgroundColor:[BLUE,TEAL,PURPLE,AMBER,GREEN],borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v+'M'}},y:{grid:{display:false},ticks:{color:TX,font:{size:10}}}}});
+    c('p1_seg','bar',['Consumer','Corporate','Home Office'],[{data:[19.09,11.17,6.52],backgroundColor:BLUE,borderRadius:4,label:'Sales'},{data:[2.07,1.20,0.69],backgroundColor:GREEN,borderRadius:4,label:'Profit'}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:10}}},y:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v+'M'}}}});
+    donut('p1_donut',['Late','Advance','On time','Canceled'],[98977,41592,32196,7754],[RED,BLUE,GREEN,GRAY]);
+  }
+  if(n===1){
+    c('p2_cat','bar',['Fishing','Cleats','Camping & Hiking','Cardio Equip',"Women's Apparel",'Water Sports',"Men's Footwear",'Indoor Games','Shop By Sport','Computers'],[{data:[6.93,4.43,4.12,3.69,3.15,3.11,2.89,2.89,1.31,0.66],backgroundColor:PURPLE,borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v+'M'}},y:{grid:{display:false},ticks:{color:TX,font:{size:9}}}}});
+    c('p2_dept','bar',['Fan Shop','Apparel','Golf','Footwear','Outdoors','Technology','Fitness'],[{data:[17.11,7.98,4.61,4.01,1.25,1.04,0.40],backgroundColor:AMBER,borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v+'M'}},y:{grid:{display:false},ticks:{color:TX,font:{size:9}}}}});
+    c('p2_seg_line','line',MONTHS,[{data:MSALES.map(v=>+((v/1e6)*0.52).toFixed(3)),borderColor:BLUE,tension:0.35,pointRadius:0,borderWidth:2,fill:false,borderDash:[]},{data:MSALES.map(v=>+((v/1e6)*0.30).toFixed(3)),borderColor:GREEN,tension:0.35,pointRadius:0,borderWidth:2,fill:false,borderDash:[5,3]},{data:MSALES.map(v=>+((v/1e6)*0.18).toFixed(3)),borderColor:AMBER,tension:0.35,pointRadius:0,borderWidth:2,fill:false,borderDash:[2,2]}],{scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},maxTicksLimit:9}},y:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v.toFixed(2)+'M'}}}});
+    c('p2_country','bar',['Estados Unidos','Francia','México','Alemania','Australia'],[{data:[4.88,2.88,2.63,2.07,1.69],backgroundColor:[BLUE,TEAL,AMBER,PURPLE,GREEN],borderRadius:4}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:9}}},y:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v+'M'}}}});
+  }
+  if(n===2){
+    donut('p3_donut',['Late delivery','Advance shipping','Shipping on time','Shipping canceled'],[98977,41592,32196,7754],[RED,BLUE,GREEN,GRAY]);
+    c('p3_market','bar',['Europe','Pacific Asia','USCA','Africa','LATAM'],[{data:[55.21,55.05,54.80,54.59,54.36],backgroundColor:RED,borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:G},min:52,max:57,ticks:{color:TX,font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:TX,font:{size:10}}}}});
+    c('p3_mode','bar',['Same Day','First Class','Second Class','Standard Class'],[{data:[0.48,2.00,3.99,4.00],backgroundColor:[GREEN,TEAL,AMBER,RED],borderRadius:4}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:10}}},y:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v+' days'}}}});
+    const ld=MONTHS.map((_,i)=>+(53+Math.sin(i*0.55)*2.5).toFixed(1));
+    c('p3_trend','line',MONTHS,[{data:ld,borderColor:RED,backgroundColor:'rgba(240,96,96,0.08)',fill:true,tension:0.35,pointRadius:0,borderWidth:2}],{scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},maxTicksLimit:9}},y:{grid:{color:G},min:48,max:60,ticks:{color:TX,font:{size:9},callback:v=>v+'%'}}}});
+  }
+  if(n===3){
+    c('p4_dept','bar',['Fan Shop','Apparel','Golf','Footwear','Outdoors','Technology','Fitness'],[{data:[1.85,0.86,0.50,0.43,0.14,0.11,0.04],backgroundColor:GREEN,borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v+'M'}},y:{grid:{display:false},ticks:{color:TX,font:{size:9}}}}});
+    c('p4_seg','bar',['Consumer','Corporate','Home Office'],[{data:[2.07,1.20,0.69],backgroundColor:[BLUE,TEAL,PURPLE],borderRadius:4}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:10}}},y:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v+'M'}}}});
+    c('p4_trend','line',MONTHS,[{data:MSALES.map(v=>+((v/1e6)*0.1078).toFixed(4)),borderColor:GREEN,backgroundColor:'rgba(79,209,165,0.08)',fill:true,tension:0.35,pointRadius:0,borderWidth:2}],{scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},maxTicksLimit:9}},y:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>+(v).toFixed(2)+'M'}}}});
+    c('p4_cat','bar',['Fishing','Cleats','Camping & Hiking','Cardio Equip',"Women's Apparel"],[{data:[0.75,0.48,0.44,0.40,0.34],backgroundColor:[PURPLE,TEAL,AMBER,BLUE,GREEN],borderRadius:4}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:9}}},y:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v+'M'}}}});
+  }
+  if(n===4){
+    donut('p5_status',['Complete','Pending payment','Processing','Pending','Closed','Other'],[59491,39832,21902,20227,19616,15651],[GREEN,BLUE,AMBER,PURPLE,GRAY,TEAL]);
+    const el=document.getElementById('p5_mode');
+    if(el)new Chart(el,{type:'pie',data:{labels:['Standard Class','Second Class','First Class','Same Day'],datasets:[{data:[107752,35216,27814,9737],backgroundColor:[BLUE,GREEN,AMBER,PURPLE],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    c('p5_trend','line',MONTHS,[{data:MSALES.map(v=>Math.round(v/560)),borderColor:BLUE,backgroundColor:'rgba(91,163,245,0.08)',fill:true,tension:0.35,pointRadius:0,borderWidth:2}],{scales:{x:{grid:{color:G},ticks:{color:TX,font:{size:9},maxTicksLimit:9}},y:{grid:{color:G},ticks:{color:TX,font:{size:9},callback:v=>v.toLocaleString()}}}});
+    c('p5_seg','bar',['Consumer','Corporate','Home Office'],[{data:[19.09,11.17,6.52],backgroundColor:[BLUE,TEAL,PURPLE],borderRadius:4}],{scales:{x:{grid:{display:false},ticks:{color:TX,font:{size:10}}},y:{grid:{color:G},ticks:{color:TX,font:{size:10},callback:v=>v+'M'}}}});
+  }
+}
+
+const inited=new Set();
+function showPage(n){
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===n));
+  document.querySelectorAll('.nav-item').forEach((b,i)=>b.classList.toggle('active',i===n));
+  if(!inited.has(n)){inited.add(n);setTimeout(()=>initPage(n),60);}
+  
+  // Close mobile sidebar if open
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (sidebar && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  }
+}
+
+// Mobile sidebar logic
+document.addEventListener('DOMContentLoaded', () => {
+  const menuToggle = document.getElementById('menuToggle');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  if (menuToggle && sidebar && overlay) {
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    });
+
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    });
+  }
+});
+
+inited.add(0);
+setTimeout(()=>initPage(0),100);
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules
+dist
+.vercel
+.gemini
+package-lock.json
+*.log
